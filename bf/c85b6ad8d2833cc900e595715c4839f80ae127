@@ -1,0 +1,19 @@
+fleet.sh
+  s_3fe1250061b8fb::t_91391913037033 28,85-88,90,92-95,110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bfc85b6ad8d2833cc900e595715c4839f80ae127",
+  "prompts": {},
+  "sessions": {
+    "s_3fe1250061b8fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eadadbb8-dec9-47ca-9975-31c45602588c",
+        "model": "unknown"
+      },
+      "human_author": "teo-lin <85103697+teo-lin@users.noreply.github.com>"
+    }
+  }
+}
