@@ -2,6 +2,8 @@
 # Spawn one agent pane per role in roles.yml, tiled in a "fleet" window.
 # Each role names a provider from providers.yml, which owns the CLI invocation.
 # Usage: fleet [session-id] [repo-path]
+# FLEET_DRY_RUN=1 prints the composed per-pane command and spawns nothing —
+# the only way to check a provider's flags without paying for N agent sessions.
 
 set -e
 
@@ -24,7 +26,9 @@ command -v node >/dev/null 2>&1 || { echo "node required to read roles.yml" >&2;
 
 typeset -A CFG
 typeset -a NAMES PROMPTS TOOLS CMDS TOOLFLAGS BINS MODELS
-while IFS=$'\t' read -r kind key val tools cmd toolflag bin model; do
+# US (0x1f), not tab: tab is IFS whitespace, so zsh collapses runs of it and one
+# empty field (a provider with no tools_flag) shifts every field after it.
+while IFS=$'\x1f' read -r kind key val tools cmd toolflag bin model; do
   case "$kind" in
     CFG)  CFG[$key]="$val" ;;
     ROLE) NAMES+=("$key"); PROMPTS+=("$val"); TOOLS+=("$tools")
@@ -32,6 +36,10 @@ while IFS=$'\t' read -r kind key val tools cmd toolflag bin model; do
           MODELS+=("$model") ;;
   esac
 done < <(node "$DIR/roles.mjs" "$ROLES_FILE")
+
+# roles.mjs die()s on a bad provider or model, but it exits inside a process
+# substitution, so $? here is read's — check the payload instead.
+[ ${#NAMES} -gt 0 ] || { echo "roles.mjs produced no roles (see error above)" >&2; exit 1 }
 
 # New panes inherit the cwd of whatever invoked this script, so pin it: an
 # unexpected cwd means a fresh trust prompt and agents editing the wrong tree.
@@ -44,7 +52,9 @@ for bin in ${(u)BINS}; do
   }
 done
 
-tmux kill-window -t "$SESS:$WIN" 2>/dev/null || true
+if [ -z "$FLEET_DRY_RUN" ]; then
+  tmux kill-window -t "$SESS:$WIN" 2>/dev/null || true
+fi
 
 # -d throughout so panes do not steal focus while the window is being built.
 for i in {1..${#NAMES}}; do
@@ -53,14 +63,24 @@ for i in {1..${#NAMES}}; do
   tpl="${CMDS[$i]}"
   # Quote every value inserted: an unquoted config_dir with a space breaks the
   # command, and one with a `;` extends it.
+  # Guard on presence: %%/# against an absent placeholder both return the whole
+  # template, which would silently duplicate the command instead of failing.
   if [[ "$tpl" == *'{config_dir}'* ]]; then
     tpl="${tpl%%\{config_dir\}*}${(q)CFG[config_dir]}${tpl#*\{config_dir\}}"
   fi
-  cmd="${tpl%%\{prompt\}*}${(q)PROMPTS[$i]}${tpl#*\{prompt\}}"
+  if [[ "$tpl" == *'{prompt}'* ]]; then
+    tpl="${tpl%%\{prompt\}*}${(q)PROMPTS[$i]}${tpl#*\{prompt\}}"
+  fi
+  cmd="$tpl"
   # An empty list must drop the flag, not pass an empty argument.
   if [ -n "${TOOLS[$i]}" ] && [ -n "${TOOLFLAGS[$i]}" ]; then
     tf="${TOOLFLAGS[$i]}"
     cmd="$cmd ${tf%%\{tools\}*}${(q)TOOLS[$i]}${tf#*\{tools\}}"
+  fi
+  if [ -n "$FLEET_DRY_RUN" ]; then
+    print -r -- "${NAMES[$i]} [${MODELS[$i]}] in $REPO"
+    print -r -- "  $cmd"
+    continue
   fi
   if (( i == 1 )); then
     tmux new-window -d -c "$REPO" -t "$SESS" -n "$WIN" "$cmd"
@@ -68,6 +88,10 @@ for i in {1..${#NAMES}}; do
     tmux split-window -d -c "$REPO" -t "$SESS:$WIN" "$cmd"
   fi
 done
+
+if [ -n "$FLEET_DRY_RUN" ]; then
+  exit 0
+fi
 
 tmux select-layout -t "$SESS:$WIN" tiled
 
@@ -89,7 +113,7 @@ tmux select-window -t "$SESS:$WIN"
 # read as an end-of-string anchor and match nothing.
 OTHERS="$(tmux list-windows -a -F '#{session_id}:#{window_index} #{window_name}' | awk -v s="$SESS:" '$2=="fleet" && substr($1,1,length(s))!=s {print $1}')"
 if [ -n "$OTHERS" ]; then
-  echo "note: other fleet windows still running (${#NAMES} claude sessions each):"
+  echo "note: other fleet windows still running (${#NAMES} agent sessions each):"
   echo "$OTHERS" | sed 's/^/  /'
   echo "kill with: tmux kill-window -t '<target>'"
 fi

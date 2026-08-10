@@ -1,38 +1,63 @@
 # Provider registry for roles.yml `provider: <name>.<model>`. Add a key to add a
 # provider. Unknown name or model is a hard error before any pane is built.
 #
-# bin/models/cmd required, tools_flag optional (appended only if the role has tools).
-# roles.mjs fills {model}; fleet.sh fills {prompt} {tools} {config_dir}, quoted.
+# bin/models/cmd required. roles.mjs fills {model}; fleet.sh fills {prompt}
+# {tools} {config_dir}, quoted.
 #
-# Only claude takes a *system* prompt; elsewhere the role brief is the first user turn.
+# prompt_style says HOW the brief reaches the agent, and is the only thing that
+# decides whether a pane wakes up idle or starts working:
+#   system - a real system-prompt flag; the brief is a persona
+#   user   - no such channel exists, so the brief lands as the first user turn,
+#            which reads as "do this now". roles.mjs appends a stand-down line;
+#            without it the pane starts work at spawn.
+# Only claude has a working system channel today. Do not add a style on the
+# strength of a flag existing — devin's --agent-config parses and does nothing.
+#
+# tools_flag optional, appended only if the role has tools. Absent means `tools:`
+# never reaches this provider.
+#
+# peer: appended after roles.yml `peer:`. Peer messaging is a Claude Code
+# feature, so naming ListAgents to any other provider just invites a
+# hallucinated tool call.
 
 # VERIFIED. CLAUDE_CONFIG_DIR must be inline — panes run via `sh -c`, no .zshrc.
 claude:
   bin: claude
   models: [opus, sonnet, fable, haiku]
+  prompt_style: system
   cmd: CLAUDE_CONFIG_DIR={config_dir} claude --model {model} --append-system-prompt {prompt}
   tools_flag: --allowedTools {tools}
+  peer: Discover the other panes with ListAgents and address them by role name.
 
-# Flags VERIFIED (positional PROMPT); model names are not.
-codex:
-  bin: codex
-  models: [gpt-5.4-codex, gpt-5.4]
-  cmd: codex --model {model} {prompt}
-
-# Flags VERIFIED; model names are not. -p/--prompt would exit; -i stays interactive.
-gemini:
-  bin: gemini
-  models: [gemini-3.1-pro, gemini-3-flash]
-  cmd: gemini --model {model} --prompt-interactive {prompt}
-
-# VERIFIED. Prompt must follow a literal `--`. Models: `devin models list`.
+# VERIFIED 2026-08-10. Prompt must follow a literal `--`. Models are family
+# slugs, aliases or UIDs (`devin models list`).
+# NOT --agent-config: its file parses (unknown fields are rejected, and
+# system_instructions must be an ARRAY), but the instructions had no observable
+# effect on v3000.3.27 — a codename planted there was ignored in `-p` and in a
+# live pane both. So devin is prompt_style: user like the rest.
 devin:
   bin: devin
-  models: [opus, sonnet, gpt, codex, gemini, swe, adaptive]
+  models: [opus, sonnet, haiku, claude, gpt, codex, gemini, swe, adaptive, gpt-5.6-sol, gpt-5.6-luna, swe-1.7]
+  prompt_style: user
   cmd: devin --model {model} -- {prompt}
 
-# UNVERIFIED guess — no `copilot` here, so fleet.sh's preflight rejects it anyway.
-copilot:
-  bin: copilot
-  models: [default, claude-sonnet, gpt-5]
-  cmd: copilot --model {model} --prompt {prompt}
+# Flags and models VERIFIED 2026-08-10 (`codex debug models`). Prompt is
+# positional. Codex has no system-prompt flag and no allowed-tools flag.
+codex:
+  bin: codex
+  models: [gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.4, gpt-5.4-mini]
+  prompt_style: user
+  cmd: codex --model {model} {prompt}
+
+# Flags and models VERIFIED 2026-08-10. -p/--prompt would exit; -i stays
+# interactive. `--allowed-tools` exists but is a yargs array and a template
+# cannot repeat a flag, so a comma-joined value would not match — left unwired.
+gemini:
+  bin: gemini
+  models: [gemini-3.1-pro, gemini-3-pro, gemini-3.5-flash, gemini-3-flash, gemini-2.5-pro]
+  prompt_style: user
+  cmd: gemini --model {model} --prompt-interactive {prompt}
+
+# `copilot` is not a standalone CLI here. `opencode` is installed but its only
+# credential is a GITHUB_TOKEN, so its model ids depend on the account; register
+# it as `opencode` with `-m provider/model` and prompt_style: user if you want it.

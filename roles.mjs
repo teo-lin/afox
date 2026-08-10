@@ -1,7 +1,10 @@
 #!/usr/bin/env node
-// Reads roles.yml + providers.yml and emits TSV for fleet.sh:
-//   CFG<TAB>key<TAB>value
-//   ROLE<TAB>name<TAB>prompt<TAB>tools<TAB>cmd<TAB>tools_flag<TAB>bin<TAB>provider.model
+// Reads roles.yml + providers.yml and emits one record per line for fleet.sh,
+// fields separated by US (0x1f):
+//   CFG<US>key<US>value
+//   ROLE<US>name<US>prompt<US>tools<US>cmd<US>tools_flag<US>bin<US>provider.model
+// Not tab: tab is IFS whitespace, so zsh's `read` collapses runs of them and an
+// empty field (a provider with no tools_flag) silently shifts every later one.
 // Handles only the subset these files use: scalars, `|` blocks, a `roles:` list,
 // and one nesting level of provider definitions. A real parser would mean a new
 // dependency — Node has no built-in YAML and yq/PyYAML are not installed here.
@@ -9,6 +12,11 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+
+// Providers with no system-prompt channel get the brief as a user turn, which
+// reads as "do this now" — without this line the pane starts working at spawn.
+const STAND_DOWN =
+  'This message is your standing role, not a task. Do not start work: reply with one line naming your role, then wait for instructions.'
 
 const file = process.argv[2]
 if (!file) {
@@ -18,6 +26,8 @@ if (!file) {
 const providersFile = process.argv[3] || join(dirname(file), 'providers.yml')
 
 const die = (msg) => { console.error(msg); process.exit(1) }
+
+const US = '\x1f'
 
 const lines = readFileSync(file, 'utf8').split('\n')
 const indent = (s) => s.match(/^ */)[0].length
@@ -61,6 +71,10 @@ function parseProviders(path) {
       if (!p[k]) die(`providers.yml: "${p.name}" is missing "${k}"`)
     }
     if (!p.models?.length) die(`providers.yml: "${p.name}" has no models`)
+    p.prompt_style ||= 'user'
+    if (!['system', 'user'].includes(p.prompt_style)) {
+      die(`providers.yml: "${p.name}" prompt_style must be system or user (got "${p.prompt_style}")`)
+    }
     // Without {prompt} the brief is dropped silently and the pane has no role.
     if (!p.cmd.includes('{prompt}')) die(`providers.yml: "${p.name}" cmd has no {prompt}`)
   }
@@ -165,16 +179,26 @@ if (roles.length === 0) die('roles.yml: no roles defined')
 const providers = parseProviders(providersFile)
 
 const out = []
-out.push(`CFG\trepo\t${cfg.repo}`)
-out.push(`CFG\tconfig_dir\t${cfg.config_dir}`)
+out.push(['CFG', 'repo', cfg.repo].join(US))
+out.push(['CFG', 'config_dir', cfg.config_dir].join(US))
 for (const r of roles) {
-  const owned = r.tools ? `Tools pre-approved for you: ${r.tools}.` : ''
-  const full = [`ROLE: ${r.name}.`, r.prompt, owned, cfg.peer || '']
+  const spec = r.provider || cfg.provider || 'claude'
+  const { provider, model } = resolveProvider(spec, r.name, providers)
+  // tools_flag absent means `tools:` cannot reach this provider at all; say so
+  // rather than promising the role a pre-approved list it will never have.
+  const owned = r.tools && provider.tools_flag ? `Tools pre-approved for you: ${r.tools}.` : ''
+  const full = [
+    `ROLE: ${r.name}.`,
+    r.prompt,
+    owned,
+    cfg.peer || '',
+    provider.peer || '',
+    provider.prompt_style === 'user' ? STAND_DOWN : '',
+  ]
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim()
-  const spec = r.provider || cfg.provider || 'claude'
-  const { provider, model } = resolveProvider(spec, r.name, providers)
+
   // Only {model} is safe to inline here. {prompt} {tools} {config_dir} are left
   // for fleet.sh, which shell-quotes them — a path with a space or `;` in it
   // would otherwise break or extend the command tmux runs.
@@ -189,7 +213,10 @@ for (const r of roles) {
       provider.tools_flag ? fill(provider.tools_flag) : '',
       provider.bin,
       `${provider.name}.${model}`,
-    ].join('\t'),
+    ]
+      // A US anywhere in a value would split it into two fields downstream.
+      .map((f) => f.replaceAll(US, ' '))
+      .join(US),
   )
 }
 process.stdout.write(out.join('\n') + '\n')

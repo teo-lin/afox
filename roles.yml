@@ -2,7 +2,8 @@
 #
 # provider: <name>.<model> from providers.yml — one value, one pane. Omit the
 # model for the provider's first; omit provider: for the default below.
-# tools:    verbatim to `claude --allowedTools`. Pre-approves; restricts nothing.
+# tools:    verbatim to the provider's tools_flag (claude only, today). Pre-approves;
+#           restricts nothing. Silently unused by providers that define no flag.
 # prompt:   only what separates this role from the others. Every pane already
 #           reads AGENTS.md and .agents/skills.
 
@@ -14,13 +15,17 @@ config_dir: ${CLAUDE_CONFIG_DIR:-~/.claude}
 provider: claude.opus
 
 # Appended to every role prompt.
+# Appended to every role prompt, so it must stay provider-agnostic — naming a
+# tool here would reach panes that do not have it. providers.yml adds the
+# per-provider sentence.
 peer: |
-  You are one of several peer Claude Code sessions running in tmux panes.
-  Discover the others with ListAgents and address them by role name.
+  You are one of several peer agent sessions running in tmux panes, one role each.
   Keep messages to peers short and factual.
 
 roles:
   - name: ORCHESTRATOR
+    # Must stay on claude: peer messaging (ListAgents/SendMessage) is a Claude
+    # Code feature, and delegating is this role's whole job.
     provider: claude.opus
     tools: mcp__jira
     prompt: |
@@ -30,7 +35,7 @@ roles:
       Track what is outstanding and report status when asked.
 
   - name: ARCHITECT
-    provider: claude.fable
+    provider: claude.opus
     tools: mcp__serena, mcp__jira
     prompt: |
       You own design and trade-offs: interfaces, file-level structure, data flow.
@@ -47,7 +52,7 @@ roles:
 
   - name: TESTER
     # Verified alternates: gemini.gemini-3.1-pro, devin.gpt
-    provider: claude.sonnet
+    provider: devin.swe
     tools: mcp__browser, mcp__cloudwatch, mcp__mysql
     prompt: |
       You own verification against the running system — the real endpoint, real
@@ -56,8 +61,8 @@ roles:
       Do not fix what you find; hand it back to DEVELOPER.
 
   - name: REVIEWER
-    # Verified alternate: codex.gpt-5.4-codex
-    provider: claude.opus
+    # Verified alternates: claude.opus, devin.codex
+    provider: codex.gpt-5.6-sol
     tools: mcp__github, mcp__sonarcloud, mcp__serena
     prompt: |
       You own correctness review. One line per finding, most severe first, and
