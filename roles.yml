@@ -26,7 +26,7 @@ roles:
   - name: ORCHESTRATOR
     # Must stay on claude: peer messaging (ListAgents/SendMessage) is a Claude
     # Code feature, and delegating is this role's whole job.
-    provider: claude.opus
+    provider: claude.sonnet
     tools: mcp__jira
     prompt: |
       You own task breakdown, sequencing, delegation, monitoring.

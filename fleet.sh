@@ -25,7 +25,7 @@ command -v node >/dev/null 2>&1 || { echo "node required to read roles.yml" >&2;
 [ -f "$ROLES_FILE" ] || { echo "missing $ROLES_FILE" >&2; exit 1 }
 
 typeset -A CFG
-typeset -a NAMES PROMPTS TOOLS CMDS TOOLFLAGS BINS MODELS
+typeset -a NAMES PROMPTS TOOLS CMDS TOOLFLAGS BINS MODELS PANES
 # US (0x1f), not tab: tab is IFS whitespace, so zsh collapses runs of it and one
 # empty field (a provider with no tools_flag) shifts every field after it.
 while IFS=$'\x1f' read -r kind key val tools cmd toolflag bin model; do
@@ -82,10 +82,17 @@ for i in {1..${#NAMES}}; do
     print -r -- "  $cmd"
     continue
   fi
+  # Capture each pane's id (%12) as it is created. Pane INDEXES cannot be used to
+  # label panes later: `-d` keeps pane 0 active, so every split splits pane 0 and
+  # is inserted directly after it — creation order comes out reversed, and the
+  # roles ended up on the wrong panes. A pane id never changes or renumbers.
   if (( i == 1 )); then
-    tmux new-window -d -c "$REPO" -t "$SESS" -n "$WIN" "$cmd"
+    PANES+=("$(tmux new-window -dP -F '#{pane_id}' -c "$REPO" -t "$SESS" -n "$WIN" "$cmd")")
   else
-    tmux split-window -d -c "$REPO" -t "$SESS:$WIN" "$cmd"
+    # Split the pane just created, not the window: targeting the window splits
+    # whichever pane is active (always pane 0 under -d), which inserted each new
+    # pane ahead of the previous one and reversed the order roles.yml declares.
+    PANES+=("$(tmux split-window -dP -F '#{pane_id}' -c "$REPO" -t "${PANES[$((i - 1))]}" "$cmd")")
   fi
 done
 
@@ -100,8 +107,8 @@ tmux select-layout -t "$SESS:$WIN" tiled
 tmux set-option -w -t "$SESS:$WIN" pane-border-status top
 tmux set-option -w -t "$SESS:$WIN" pane-border-format '#{pane_index}: #{@role} [#{@model}]'
 for i in {1..${#NAMES}}; do
-  tmux set-option -p -t "$SESS:$WIN.$((i - 1))" @role "${NAMES[$i]}"
-  tmux set-option -p -t "$SESS:$WIN.$((i - 1))" @model "${MODELS[$i]}"
+  tmux set-option -p -t "${PANES[$i]}" @role "${NAMES[$i]}"
+  tmux set-option -p -t "${PANES[$i]}" @model "${MODELS[$i]}"
 done
 
 # Built with -d to avoid flicker, but the caller asked for it — so show it.
