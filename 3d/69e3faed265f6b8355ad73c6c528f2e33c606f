@@ -1,0 +1,72 @@
+.agents/skills/beads/SKILL.md
+  h_ea25ce7e8eb9fc 1-80
+.agents/skills/beads/agents/openai.yaml
+  h_ea25ce7e8eb9fc 1-4
+.agents/skills/fleet/SKILL.md
+  h_ea25ce7e8eb9fc 1-92
+.agents/skills/role/SKILL.md
+  h_ea25ce7e8eb9fc 1-112
+.beads/.gitignore
+  h_ea25ce7e8eb9fc 1-77
+.beads/README.md
+  h_ea25ce7e8eb9fc 1-81
+.beads/config.yaml
+  h_ea25ce7e8eb9fc 1-68
+.beads/hooks/post-checkout
+  h_ea25ce7e8eb9fc 1-33
+.beads/hooks/post-merge
+  h_ea25ce7e8eb9fc 1-33
+.beads/hooks/pre-commit
+  h_ea25ce7e8eb9fc 1-33
+.beads/hooks/pre-push
+  h_ea25ce7e8eb9fc 1-33
+.beads/hooks/prepare-commit-msg
+  h_ea25ce7e8eb9fc 1-33
+.beads/metadata.json
+  h_ea25ce7e8eb9fc 1-7
+.claude/commands/fleet.md
+  h_ea25ce7e8eb9fc 1
+.claude/commands/role.md
+  h_ea25ce7e8eb9fc 1
+.claude/settings.json
+  h_ea25ce7e8eb9fc 1-15
+.codex/config.toml
+  h_ea25ce7e8eb9fc 1-2
+.codex/hooks.json
+  h_ea25ce7e8eb9fc 1-51
+.env.example
+  h_ea25ce7e8eb9fc 1-12
+.gitignore
+  h_ea25ce7e8eb9fc 1-9
+.serena/.gitignore
+  h_ea25ce7e8eb9fc 1-2
+.serena/project.yml
+  h_ea25ce7e8eb9fc 1-133
+AGENTS.md
+  h_ea25ce7e8eb9fc 1-55
+README.md
+  h_ea25ce7e8eb9fc 1-84
+fleet.sh
+  h_ea25ce7e8eb9fc 1-95
+providers.yml
+  h_ea25ce7e8eb9fc 1-38
+roles.mjs
+  h_ea25ce7e8eb9fc 1-195
+roles.yml
+  h_ea25ce7e8eb9fc 1-65
+setup.sh
+  h_ea25ce7e8eb9fc 1-53
+tmux.conf
+  h_ea25ce7e8eb9fc 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3d69e3faed265f6b8355ad73c6c528f2e33c606f",
+  "prompts": {},
+  "humans": {
+    "h_ea25ce7e8eb9fc": {
+      "author": "teo-lin <85103697+teo-lin@users.noreply.github.com>"
+    }
+  }
+}
