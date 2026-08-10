@@ -1,0 +1,38 @@
+# Provider registry for roles.yml `provider: <name>.<model>`. Add a key to add a
+# provider. Unknown name or model is a hard error before any pane is built.
+#
+# bin/models/cmd required, tools_flag optional (appended only if the role has tools).
+# roles.mjs fills {model}; fleet.sh fills {prompt} {tools} {config_dir}, quoted.
+#
+# Only claude takes a *system* prompt; elsewhere the role brief is the first user turn.
+
+# VERIFIED. CLAUDE_CONFIG_DIR must be inline — panes run via `sh -c`, no .zshrc.
+claude:
+  bin: claude
+  models: [opus, sonnet, fable, haiku]
+  cmd: CLAUDE_CONFIG_DIR={config_dir} claude --model {model} --append-system-prompt {prompt}
+  tools_flag: --allowedTools {tools}
+
+# Flags VERIFIED (positional PROMPT); model names are not.
+codex:
+  bin: codex
+  models: [gpt-5.4-codex, gpt-5.4]
+  cmd: codex --model {model} {prompt}
+
+# Flags VERIFIED; model names are not. -p/--prompt would exit; -i stays interactive.
+gemini:
+  bin: gemini
+  models: [gemini-3.1-pro, gemini-3-flash]
+  cmd: gemini --model {model} --prompt-interactive {prompt}
+
+# VERIFIED. Prompt must follow a literal `--`. Models: `devin models list`.
+devin:
+  bin: devin
+  models: [opus, sonnet, gpt, codex, gemini, swe, adaptive]
+  cmd: devin --model {model} -- {prompt}
+
+# UNVERIFIED guess — no `copilot` here, so fleet.sh's preflight rejects it anyway.
+copilot:
+  bin: copilot
+  models: [default, claude-sonnet, gpt-5]
+  cmd: copilot --model {model} --prompt {prompt}

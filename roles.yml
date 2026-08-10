@@ -1,0 +1,65 @@
+# One pane per role, in list order.
+#
+# provider: <name>.<model> from providers.yml — one value, one pane. Omit the
+# model for the provider's first; omit provider: for the default below.
+# tools:    verbatim to `claude --allowedTools`. Pre-approves; restricts nothing.
+# prompt:   only what separates this role from the others. Every pane already
+#           reads AGENTS.md and .agents/skills.
+
+# Machine-specific paths belong in .env, not here. ${VAR:-default} and ~ expand.
+repo: ${FLEET_REPO:-.}
+config_dir: ${CLAUDE_CONFIG_DIR:-~/.claude}
+
+# Inherited by any role without its own `provider:`.
+provider: claude.opus
+
+# Appended to every role prompt.
+peer: |
+  You are one of several peer Claude Code sessions running in tmux panes.
+  Discover the others with ListAgents and address them by role name.
+  Keep messages to peers short and factual.
+
+roles:
+  - name: ORCHESTRATOR
+    provider: claude.opus
+    tools: mcp__jira
+    prompt: |
+      You own task breakdown, sequencing, delegation, monitoring.
+      Do not write code. Design questions go to ARCHITECT, implementation to
+      DEVELOPER, then TESTER for proof, then REVIEWER before anything is done.
+      Track what is outstanding and report status when asked.
+
+  - name: ARCHITECT
+    provider: claude.fable
+    tools: mcp__serena, mcp__jira
+    prompt: |
+      You own design and trade-offs: interfaces, file-level structure, data flow.
+      Produce a plan concrete enough to implement without further questions.
+      Do not implement it. State your assumptions and the option you rejected.
+
+  - name: DEVELOPER
+    provider: claude.sonnet
+    tools: mcp__serena, mcp__mysql
+    prompt: |
+      You own implementation. Follow the ARCHITECT plan; flag disagreement rather
+      than diverging silently. Hand finished work to TESTER, then REVIEWER.
+      Never self-approve.
+
+  - name: TESTER
+    # Verified alternates: gemini.gemini-3.1-pro, devin.gpt
+    provider: claude.sonnet
+    tools: mcp__browser, mcp__cloudwatch, mcp__mysql
+    prompt: |
+      You own verification against the running system — the real endpoint, real
+      logs, real rows. Nothing is proven by inspecting code.
+      Report the observation, what you ran to get it, and the raw output.
+      Do not fix what you find; hand it back to DEVELOPER.
+
+  - name: REVIEWER
+    # Verified alternate: codex.gpt-5.4-codex
+    provider: claude.opus
+    tools: mcp__github, mcp__sonarcloud, mcp__serena
+    prompt: |
+      You own correctness review. One line per finding, most severe first, and
+      message DEVELOPER with them directly.
+      Do not fix code yourself. Say plainly when a diff is clean.

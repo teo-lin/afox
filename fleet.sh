@@ -1,0 +1,95 @@
+#!/usr/bin/env zsh
+# Spawn one agent pane per role in roles.yml, tiled in a "fleet" window.
+# Each role names a provider from providers.yml, which owns the CLI invocation.
+# Usage: fleet [session-id] [repo-path]
+
+set -e
+
+DIR="${0:A:h}"
+ROLES_FILE="$DIR/roles.yml"
+WIN=fleet
+
+# Session IDs ($43), not names: VSCode names sessions numerically, so a bare
+# "36" is parsed as window index 36 half the time.
+SESS="${1:-$(tmux display-message -p '#{session_id}')}"
+
+# Machine-specific paths (FLEET_REPO, CLAUDE_CONFIG_DIR) live here, not in the
+# tracked files. `set -a` so roles.mjs sees them.
+if [ -f "$DIR/.env" ]; then
+  set -a; source "$DIR/.env"; set +a
+fi
+
+command -v node >/dev/null 2>&1 || { echo "node required to read roles.yml" >&2; exit 1 }
+[ -f "$ROLES_FILE" ] || { echo "missing $ROLES_FILE" >&2; exit 1 }
+
+typeset -A CFG
+typeset -a NAMES PROMPTS TOOLS CMDS TOOLFLAGS BINS MODELS
+while IFS=$'\t' read -r kind key val tools cmd toolflag bin model; do
+  case "$kind" in
+    CFG)  CFG[$key]="$val" ;;
+    ROLE) NAMES+=("$key"); PROMPTS+=("$val"); TOOLS+=("$tools")
+          CMDS+=("$cmd"); TOOLFLAGS+=("$toolflag"); BINS+=("$bin")
+          MODELS+=("$model") ;;
+  esac
+done < <(node "$DIR/roles.mjs" "$ROLES_FILE")
+
+# New panes inherit the cwd of whatever invoked this script, so pin it: an
+# unexpected cwd means a fresh trust prompt and agents editing the wrong tree.
+REPO="${2:-${CFG[repo]}}"
+
+# A dying pane takes the whole window with it, silently — so check before any exist.
+for bin in ${(u)BINS}; do
+  command -v "$bin" >/dev/null 2>&1 || {
+    echo "provider binary '$bin' not on PATH (see providers.yml)" >&2; exit 1
+  }
+done
+
+tmux kill-window -t "$SESS:$WIN" 2>/dev/null || true
+
+# -d throughout so panes do not steal focus while the window is being built.
+for i in {1..${#NAMES}}; do
+  # Split-and-insert, not ${cmd//…}: substitution would reinterpret the
+  # backslashes ${(q)…} just added.
+  tpl="${CMDS[$i]}"
+  # Quote every value inserted: an unquoted config_dir with a space breaks the
+  # command, and one with a `;` extends it.
+  if [[ "$tpl" == *'{config_dir}'* ]]; then
+    tpl="${tpl%%\{config_dir\}*}${(q)CFG[config_dir]}${tpl#*\{config_dir\}}"
+  fi
+  cmd="${tpl%%\{prompt\}*}${(q)PROMPTS[$i]}${tpl#*\{prompt\}}"
+  # An empty list must drop the flag, not pass an empty argument.
+  if [ -n "${TOOLS[$i]}" ] && [ -n "${TOOLFLAGS[$i]}" ]; then
+    tf="${TOOLFLAGS[$i]}"
+    cmd="$cmd ${tf%%\{tools\}*}${(q)TOOLS[$i]}${tf#*\{tools\}}"
+  fi
+  if (( i == 1 )); then
+    tmux new-window -d -c "$REPO" -t "$SESS" -n "$WIN" "$cmd"
+  else
+    tmux split-window -d -c "$REPO" -t "$SESS:$WIN" "$cmd"
+  fi
+done
+
+tmux select-layout -t "$SESS:$WIN" tiled
+
+# Roles live in pane-scoped user options, not pane titles: claude overwrites the
+# title via OSC escape, but it cannot touch a tmux option.
+tmux set-option -w -t "$SESS:$WIN" pane-border-status top
+tmux set-option -w -t "$SESS:$WIN" pane-border-format '#{pane_index}: #{@role} [#{@model}]'
+for i in {1..${#NAMES}}; do
+  tmux set-option -p -t "$SESS:$WIN.$((i - 1))" @role "${NAMES[$i]}"
+  tmux set-option -p -t "$SESS:$WIN.$((i - 1))" @model "${MODELS[$i]}"
+done
+
+# Built with -d to avoid flicker, but the caller asked for it — so show it.
+tmux select-window -t "$SESS:$WIN"
+
+# Fleets in OTHER sessions stay running and cost real CPU; this only manages
+# the current session's window.
+# Literal prefix compare, not regex: session ids start with "$", which awk would
+# read as an end-of-string anchor and match nothing.
+OTHERS="$(tmux list-windows -a -F '#{session_id}:#{window_index} #{window_name}' | awk -v s="$SESS:" '$2=="fleet" && substr($1,1,length(s))!=s {print $1}')"
+if [ -n "$OTHERS" ]; then
+  echo "note: other fleet windows still running (${#NAMES} claude sessions each):"
+  echo "$OTHERS" | sed 's/^/  /'
+  echo "kill with: tmux kill-window -t '<target>'"
+fi

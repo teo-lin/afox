@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "afox",
+  "project_id": "f3529f2e-df73-4eae-a734-119313717e43"
+}
