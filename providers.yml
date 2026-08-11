@@ -58,6 +58,18 @@ gemini:
   prompt_style: user
   cmd: gemini --model {model} --prompt-interactive {prompt}
 
-# `copilot` is not a standalone CLI here. `opencode` is installed but its only
-# credential is a GITHUB_TOKEN, so its model ids depend on the account; register
-# it as `opencode` with `-m provider/model` and prompt_style: user if you want it.
+# `copilot` is not a standalone CLI here, so it is registered via `opencode`.
+# GITHUB_TOKEN model ids are account-dependent; use `github-copilot/<model>`.
+copilot:
+  bin: opencode
+  models: [github-copilot/claude-opus-4.6, github-copilot/claude-sonnet-4.6, sol, terra, github-copilot/gpt-5.6-sol, github-copilot/gpt-5.6-terra, github-copilot/gemini-3.1-pro-preview, github-copilot/gemini-3.5-flash]
+  prompt_style: user
+  cmd: OPENCODE_MODEL=$(case {model} in sol) echo github-copilot/gpt-5.6-sol;; terra) echo github-copilot/gpt-5.6-terra;; *) echo {model};; esac) opencode -m $OPENCODE_MODEL --prompt {prompt}
+
+# Local-first goose; current config is ollama. Add local models as you serve them.
+goose:
+  bin: goose
+  models: [qwen, qwen3:8b]
+  prompt_style: user
+  cmd: GOOSE_PROVIDER=ollama GOOSE_MODEL=$(if [ {model} = qwen ]; then echo qwen3:8b; else echo {model}; fi) goose run -t {prompt} -s
+

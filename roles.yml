@@ -35,7 +35,7 @@ roles:
       Track what is outstanding and report status when asked.
 
   - name: ARCHITECT
-    provider: claude.opus
+    provider: codex.gpt-5.6-sol
     tools: mcp__serena, mcp__jira
     prompt: |
       You own design and trade-offs: interfaces, file-level structure, data flow.
@@ -43,7 +43,7 @@ roles:
       Do not implement it. State your assumptions and the option you rejected.
 
   - name: DEVELOPER
-    provider: claude.sonnet
+    provider: goose.qwen3:8b
     tools: mcp__serena, mcp__mysql
     prompt: |
       You own implementation. Follow the ARCHITECT plan; flag disagreement rather
@@ -51,7 +51,6 @@ roles:
       Never self-approve.
 
   - name: TESTER
-    # Verified alternates: gemini.gemini-3.1-pro, devin.gpt
     provider: devin.swe
     tools: mcp__browser, mcp__cloudwatch, mcp__mysql
     prompt: |
@@ -61,8 +60,7 @@ roles:
       Do not fix what you find; hand it back to DEVELOPER.
 
   - name: REVIEWER
-    # Verified alternates: claude.opus, devin.codex
-    provider: codex.gpt-5.6-sol
+    provider: copilot.terra
     tools: mcp__github, mcp__sonarcloud, mcp__serena
     prompt: |
       You own correctness review. One line per finding, most severe first, and
