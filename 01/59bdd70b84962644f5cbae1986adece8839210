@@ -1,0 +1,20 @@
+fleet.sh
+  s_b7c9a4bc0e55ed::t_7851e1566e6110 132-135
+  s_b7c9a4bc0e55ed::t_b1a34810a97e76 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0159bdd70b84962644f5cbae1986adece8839210",
+  "prompts": {},
+  "sessions": {
+    "s_b7c9a4bc0e55ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5daaa7e5-4ef9-4611-b78a-a7314c6d2ddf",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "teo-lin <85103697+teo-lin@users.noreply.github.com>"
+    }
+  }
+}
