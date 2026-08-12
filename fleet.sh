@@ -129,6 +129,11 @@ done
 # Built with -d to avoid flicker, but the caller asked for it — so show it.
 tmux select-window -t "$SESS:$WIN"
 
+# Closing the terminal tab only detaches tmux's client (SIGHUP); the session
+# and its agent processes survive headless without this — kill it all, not
+# just the fleet window.
+tmux set-option -t "$SESS" destroy-unattached on
+
 # Fleets in OTHER sessions stay running and cost real CPU; this only manages
 # the current session's window.
 # Literal prefix compare, not regex: session ids start with "$", which awk would
