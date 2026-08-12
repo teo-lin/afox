@@ -8,7 +8,10 @@
 #           reads AGENTS.md and .agents/skills.
 
 # Machine-specific paths belong in .env, not here. ${VAR:-default} and ~ expand.
-repo: ${FLEET_REPO:-.}
+# Always the invoking directory — override per-call with `fleet <session> <repo>`,
+# never via env var: a persisted FLEET_REPO silently pointed panes at a stale
+# repo across unrelated sessions. See fleet.sh's ${2:-...} for the call-time override.
+repo: .
 config_dir: ${CLAUDE_CONFIG_DIR:-~/.claude}
 
 # Inherited by any role without its own `provider:`.

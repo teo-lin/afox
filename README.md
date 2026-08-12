@@ -77,7 +77,7 @@ Mouse is on: click panes and status-bar window names. Hold **Option** to drag-se
 ## Install
 
 ```sh
-cp .env.example .env    # optional: FLEET_REPO, CLAUDE_CONFIG_DIR. Quote the values.
+cp .env.example .env    # optional: CLAUDE_CONFIG_DIR. Quote the values.
 ./setup.sh              # adds `fleet` to .zshrc / .bash_profile / config.fish
 exec $SHELL             # or just open a new pane
 ```

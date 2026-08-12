@@ -15,14 +15,29 @@ WIN=fleet
 # "36" is parsed as window index 36 half the time.
 SESS="${1:-$(tmux display-message -p '#{session_id}')}"
 
-# Machine-specific paths (FLEET_REPO, CLAUDE_CONFIG_DIR) live here, not in the
-# tracked files. `set -a` so roles.mjs sees them.
+# Machine-specific paths (CLAUDE_CONFIG_DIR) live here, not in the tracked
+# files. `set -a` so roles.mjs sees them.
 if [ -f "$DIR/.env" ]; then
   set -a; source "$DIR/.env"; set +a
 fi
 
 command -v node >/dev/null 2>&1 || { echo "node required to read roles.yml" >&2; exit 1 }
 [ -f "$ROLES_FILE" ] || { echo "missing $ROLES_FILE" >&2; exit 1 }
+
+# ~/.tmux.conf must symlink to this repo's tmux.conf (mouse on, prefix C-\).
+# A move/rename of this repo leaves a dangling link and tmux silently falls
+# back to stock defaults (mouse off, C-b) — re-point it on every run instead
+# of trusting a one-time manual symlink. Only touch it if it is already a
+# symlink (or absent): a real file there is the user's own config, not ours.
+TMUX_CONF="$HOME/.tmux.conf"
+if [ ! -e "$TMUX_CONF" ] || [ -L "$TMUX_CONF" ]; then
+  if [ "$(readlink "$TMUX_CONF" 2>/dev/null)" != "$DIR/tmux.conf" ]; then
+    ln -sfn "$DIR/tmux.conf" "$TMUX_CONF"
+    tmux source-file "$TMUX_CONF" 2>/dev/null || true
+  fi
+else
+  echo "warning: $TMUX_CONF exists and is not a symlink — not touching it (see README)" >&2
+fi
 
 typeset -A CFG
 typeset -a NAMES PROMPTS TOOLS CMDS TOOLFLAGS BINS MODELS PANES
