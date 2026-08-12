@@ -1,0 +1,26 @@
+.env.example
+  s_60aa1f8bb1e820::t_2f6b5aadc9900a 1,4-8
+roles.yml
+  s_60aa1f8bb1e820::t_3cba5938e16407 11-14
+README.md
+  s_60aa1f8bb1e820::t_bde0f637dc94df 80
+fleet.sh
+  s_60aa1f8bb1e820::t_cfc3a4bc707541 18-19
+  s_60aa1f8bb1e820::t_82d2b2590f97b2 27-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bf3fd5f191c09aef5472fcb9ff7e27a0bb113aab",
+  "prompts": {},
+  "sessions": {
+    "s_60aa1f8bb1e820": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43a8cad2-b52c-4905-8a3d-24742a588775",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "teo-lin <85103697+teo-lin@users.noreply.github.com>"
+    }
+  }
+}
