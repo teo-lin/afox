@@ -21,14 +21,11 @@
 # hallucinated tool call.
 
 # VERIFIED. CLAUDE_CONFIG_DIR must be inline — panes run via `sh -c`, no .zshrc.
-# --ax-screen-reader: no suppression flag exists for the Welcome/Tips/What's-new
-# splash (it's the idle-session screen, clears on first message); this only
-# de-decorates it (no boxes/borders/art) to shrink the footprint in a tiled pane.
 claude:
   bin: claude
   models: [opus, sonnet, fable, haiku]
   prompt_style: system
-  cmd: CLAUDE_CONFIG_DIR={config_dir} claude --ax-screen-reader --model {model} --append-system-prompt {prompt}
+  cmd: CLAUDE_CONFIG_DIR={config_dir} claude --model {model} --append-system-prompt {prompt}
   tools_flag: --allowedTools {tools}
   peer: Discover the other panes with ListAgents and address them by role name.
 
