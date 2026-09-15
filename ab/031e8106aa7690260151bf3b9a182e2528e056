@@ -1,0 +1,75 @@
+roles.yml
+  s_3baba32a7432d8::t_b16a8130195c18 66
+.beads/interactions.jsonl
+  s_3baba32a7432d8::t_b0d40261eacd4d 4
+  s_3baba32a7432d8::t_62690cc3e66892 5
+.env.example
+  s_3baba32a7432d8::t_b4a62180266a88 14-21
+README.md
+  s_3baba32a7432d8::t_133b4c700d6f72 25-27,30-35,67-69,71-72,74-85
+  s_3baba32a7432d8::t_b0d40261eacd4d 61-62
+.agents/implement-tickets.prompt.md
+  s_a1300f910355b1::t_d0391f8b77ae6a 1-122
+prices.yml
+  s_3baba32a7432d8::t_3ddcea1c8047cf 1-32
+hold.sh
+  s_3baba32a7432d8::t_822eb9501fd9c6 1-21
+roles.mjs
+  s_3baba32a7432d8::t_d45acbf56fcbe7 5,216
+providers.yml
+  s_3baba32a7432d8::t_093cc24664cf0c 19-21,31
+fleet.sh
+  s_3baba32a7432d8::t_b7287fb0ecf2df 5,9,17,21-27,36-49,83,88,140-147,149,180
+  s_3baba32a7432d8::t_3f5f93c4063662 205-208,210
+  s_3baba32a7432d8::t_40f7e9b707c988 6,10,18-19,28-35,80,123-130,176,181-188,190-204,209,211
+  s_3baba32a7432d8::t_bf92881d1a99b3 20
+cost.mjs
+  s_3baba32a7432d8::t_60c99baf087709 22,188-194,215-216,237-238
+  s_3baba32a7432d8::t_371c960c631860 1-21,23-187,195-214,217-236,239-245
+SPECS.md
+  s_3baba32a7432d8::t_2ba2821945f56e 18,70-84
+.beads.backup-pre-recovery/.gitignore
+  s_a1300f910355b1::t_d5bca1528a5a84 1-77
+.beads.backup-pre-recovery/README.md
+  s_a1300f910355b1::t_0fb50ddc21bde6 1-81
+.beads.backup-pre-recovery/config.yaml
+  s_a1300f910355b1::t_380ddeb69b6711 1-68
+.beads.backup-pre-recovery/hooks/post-checkout
+  s_a1300f910355b1::t_ed462a21fdd5da 1-33
+.beads.backup-pre-recovery/hooks/post-merge
+  s_a1300f910355b1::t_274ad47cae4421 1-33
+.beads.backup-pre-recovery/hooks/pre-commit
+  s_a1300f910355b1::t_8f01568f25db83 1-33
+.beads.backup-pre-recovery/hooks/pre-push
+  s_a1300f910355b1::t_d65d6f612c545e 1-33
+.beads.backup-pre-recovery/hooks/prepare-commit-msg
+  s_a1300f910355b1::t_5118d72896952f 1-33
+.beads.backup-pre-recovery/interactions.jsonl
+  s_a1300f910355b1::t_feff4ca8734af3 1-3
+.beads.backup-pre-recovery/metadata.json
+  s_a1300f910355b1::t_1a986b4db25692 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ab031e8106aa7690260151bf3b9a182e2528e056",
+  "prompts": {},
+  "sessions": {
+    "s_3baba32a7432d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4d34533-876d-4907-b5bb-d4de4c6c32ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "teo-lin <85103697+teo-lin@users.noreply.github.com>"
+    },
+    "s_a1300f910355b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d908ffa4-507f-4748-a9e3-24e90075bb9d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "teo-lin <85103697+teo-lin@users.noreply.github.com>"
+    }
+  }
+}
