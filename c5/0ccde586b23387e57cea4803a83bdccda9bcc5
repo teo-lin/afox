@@ -1,0 +1,26 @@
+.beads/interactions.jsonl
+  s_3baba32a7432d8::t_e646a7b1c07078 11
+  s_3baba32a7432d8::t_d88b0f66ddfbca 10
+roles.yml
+  s_3baba32a7432d8::t_32750379898170 36-37
+README.md
+  s_3baba32a7432d8::t_32750379898170 63
+board.mjs
+  s_3baba32a7432d8::t_d88b0f66ddfbca 2-5,9,11-16,19-21,23-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c50ccde586b23387e57cea4803a83bdccda9bcc5",
+  "prompts": {},
+  "sessions": {
+    "s_3baba32a7432d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4d34533-876d-4907-b5bb-d4de4c6c32ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "teo-lin <85103697+teo-lin@users.noreply.github.com>"
+    }
+  }
+}
