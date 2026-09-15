@@ -8,7 +8,6 @@
 # the only way to check a provider's flags without paying for N agent sessions.
 # FLEET_HOLD=user|all|off picks which panes start held (default user).
 # FLEET_BUDGET_USD caps spend per pane: warn at 80%, stop the pane's agent at 100%.
-# FLEET_BOARD=off drops the ticket board pane.
 
 set -e
 
@@ -17,7 +16,6 @@ ROLES_FILE="$DIR/roles.yml"
 WIN=fleet
 HOLD_SH="$DIR/hold.sh"
 COST_MJS="$DIR/cost.mjs"
-BOARD_MJS="$DIR/board.mjs"
 manifest_for() { print -r -- "${TMPDIR:-/tmp}/afox-fleet-${1//[^A-Za-z0-9]/_}.json" }
 
 # A held pane has no provider process yet, so it cannot take a first turn.
@@ -184,19 +182,6 @@ for i in {1..${#NAMES}}; do
   tmux set-option -p -t "${PANES[$i]}" @model "${MODELS[$i]}"
   tmux set-option -p -t "${PANES[$i]}" @held "${HELD[$i]}"
 done
-
-# The board is a pane, not a role: it runs no agent, so it is not in the manifest
-# and costs nothing. A window too small for one more pane is not a failure.
-if [ "${FLEET_BOARD:-on}" != off ]; then
-  BOARD_PANE="$(tmux split-window -dP -F '#{pane_id}' -c "$REPO" -t "${PANES[1]}" "node ${(q)BOARD_MJS}" 2>/dev/null || true)"
-  if [ -n "$BOARD_PANE" ]; then
-    tmux set-option -p -t "$BOARD_PANE" @role BOARD
-    tmux set-option -p -t "$BOARD_PANE" @model tickets
-    tmux select-layout -t "$SESS:$WIN" tiled
-  else
-    echo "note: no room for the ticket board pane — FLEET_BOARD=off to silence" >&2
-  fi
-fi
 
 # The monitor reads each provider's own session log, so it needs the pane ids and
 # the session ids handed out above — neither exists before the panes do.

@@ -60,7 +60,7 @@ account-dependent — add it yourself with `-m provider/model` and `prompt_style
 `tmux.conf` — the original. `~/.tmux.conf` is a symlink to it. Edit this file.
 `fleet.sh` — spawn one pane per role in `roles.yml`.
 `hold.sh` — runs in place of a `user`-style provider until the pane is addressed.
-`board.mjs` — the ticket board pane: Beads tickets, closed ones ticked and struck through.
+`board.mjs` — prints the Beads ticket list as markdown checkboxes; ORCHESTRATOR shows it in its own thread.
 `setup.sh` — installs a `fleet` shell function into your rc. Idempotent.
 
 ## Keys

@@ -33,6 +33,8 @@ roles:
     tools: mcp__jira
     prompt: |
       You own task breakdown, sequencing, delegation, monitoring.
+      Run `node board.mjs` and show its output in full when you start, and again
+      after any ticket changes state. It is the ticket list; do not retype it.
       Do not write code. Design questions go to ARCHITECT, implementation to
       DEVELOPER, then TESTER for proof, then REVIEWER before anything is done.
       Track what is outstanding and report status when asked.
