@@ -15,7 +15,7 @@ validated elsewhere. Twelve specs; `Score` is a derived metric from
 | 5 | Per-role config | Met — `roles.yml` + `providers.yml`: provider, model, tools, prompt per role | Keep | — |
 | 6 | Cross-session memory | Met — Beads (internal) + Jira (external) | Keep | — |
 | 7 | Issue tracking | Met — Beads + Jira | Keep | — |
-| 8 | Stand-down guaranteed | Partial — prompt-only "stand-down line," verified for claude panes only | Platform-enforced idle for every provider | High |
+| 8 | Stand-down guaranteed | Met — `hold.sh` keeps user-style panes un-started until addressed | Keep | — |
 | 9 | Cost monitoring | Not met | Per-session token/spend tracking, budget stop | Medium — cheap, solved pattern exists |
 | 10 | Agent↔agent comms | Unverified — `ListAgents` returns "No reachable agents" every attempt | Confirm or replace with a working channel | Medium — blocks spec 11 |
 | 11 | Active listening | Not designed — pipeline is strictly sequential by choice | Open research question | Low/stretch — no prior art anywhere |
@@ -67,16 +67,21 @@ a durable internal ledger the way Beads does.
 
 ## Gaps and open questions — action needed
 
-**8. Stand-down guaranteed — High priority.**
-Currently a "stand-down line" appended to non-`system`-style provider prompts
-(`providers.yml`), observed to work in two spot checks (codex, devin) but never
-proven as a guarantee — it is a request, not an enforcement. No competitor in
-the survey solved this either (AWS CAO's role/allowlist enforcement is closest,
-but scoped to tools, not to idle-state). This stays afox's own biggest
-already-documented risk (see README "Unverified" section) independent of what
-competitors do. Fixing it doesn't require copying anyone; it requires either
-(a) a provider-side flag that actually blocks first-turn execution, or (b) a
-wrapper that holds the prompt until explicitly released.
+**8. Stand-down guaranteed — Met 2026-09-14.**
+Option (b) of the two below: `fleet.sh` runs every `user`-style pane under
+`hold.sh`, which composes the provider command and does not execute it. The
+provider process does not exist until the pane is addressed — Enter in the pane,
+or `./fleet.sh --release` — so there is no first turn to stand down from, and no
+spend before it. The appended stand-down line stays as a second layer for after
+release. Option (a), a provider-side flag that blocks first-turn execution, was
+not pursued: it would have to be found and proven separately for codex, devin,
+gemini, copilot and goose, and devin's `--agent-config` is the standing example
+of a flag that validates and then does nothing.
+
+Observed: three consecutive fleet spawns with devin and codex panes held, plus a
+probe spawn covering gemini, copilot and goose. In every case the pane ran
+`hold.sh`, no provider process existed, and nothing was written. Releasing the
+panes started devin and codex, which each answered with one line and stopped.
 
 **9. Cost monitoring — Medium priority, solved pattern available.**
 Not implemented. agent-deck (Category B) has the best-in-survey reference:

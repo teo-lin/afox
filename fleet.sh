@@ -2,14 +2,51 @@
 # Spawn one agent pane per role in roles.yml, tiled in a "fleet" window.
 # Each role names a provider from providers.yml, which owns the CLI invocation.
 # Usage: fleet [session-id] [repo-path]
+#        fleet --release [session-id]   release every held pane in that fleet
+#        fleet --cost [session-id]      print tokens and spend per pane
 # FLEET_DRY_RUN=1 prints the composed per-pane command and spawns nothing —
 # the only way to check a provider's flags without paying for N agent sessions.
+# FLEET_HOLD=user|all|off picks which panes start held (default user).
+# FLEET_BUDGET_USD caps spend per pane: warn at 80%, stop the pane's agent at 100%.
 
 set -e
 
 DIR="${0:A:h}"
 ROLES_FILE="$DIR/roles.yml"
 WIN=fleet
+HOLD_SH="$DIR/hold.sh"
+COST_MJS="$DIR/cost.mjs"
+manifest_for() { print -r -- "${TMPDIR:-/tmp}/afox-fleet-${1//[^A-Za-z0-9]/_}.json" }
+
+# A held pane has no provider process yet, so it cannot take a first turn.
+HOLD_MODE="${FLEET_HOLD:-user}"
+case "$HOLD_MODE" in
+  user|all|off) ;;
+  *) echo "FLEET_HOLD must be user, all or off (got '$HOLD_MODE')" >&2; exit 1 ;;
+esac
+
+if [ "$1" = "--cost" ]; then
+  shift
+  CSESS="${1:-$(tmux display-message -p '#{session_id}')}"
+  CMAN="$(manifest_for "$CSESS")"
+  [ -f "$CMAN" ] || { echo "no fleet manifest for $CSESS — spawn a fleet first" >&2; exit 1 }
+  exec node "$COST_MJS" report "$CMAN"
+fi
+
+if [ "$1" = "--release" ]; then
+  shift
+  RSESS="${1:-$(tmux display-message -p '#{session_id}')}"
+  HELD_PANES="$(tmux list-panes -t "$RSESS:$WIN" -F '#{pane_id} #{@held}' 2>/dev/null | awk '$2=="1"{print $1}')"
+  if [ -z "$HELD_PANES" ]; then
+    echo "no held panes in $RSESS:$WIN"
+    exit 0
+  fi
+  for p in ${(f)HELD_PANES}; do
+    tmux send-keys -t "$p" Enter
+    echo "released $p"
+  done
+  exit 0
+fi
 
 # Session IDs ($43), not names: VSCode names sessions numerically, so a bare
 # "36" is parsed as window index 36 half the time.
@@ -40,15 +77,15 @@ else
 fi
 
 typeset -A CFG
-typeset -a NAMES PROMPTS TOOLS CMDS TOOLFLAGS BINS MODELS PANES
+typeset -a NAMES PROMPTS TOOLS CMDS TOOLFLAGS BINS MODELS STYLES HELD SIDS PANES
 # US (0x1f), not tab: tab is IFS whitespace, so zsh collapses runs of it and one
 # empty field (a provider with no tools_flag) shifts every field after it.
-while IFS=$'\x1f' read -r kind key val tools cmd toolflag bin model; do
+while IFS=$'\x1f' read -r kind key val tools cmd toolflag bin model style; do
   case "$kind" in
     CFG)  CFG[$key]="$val" ;;
     ROLE) NAMES+=("$key"); PROMPTS+=("$val"); TOOLS+=("$tools")
           CMDS+=("$cmd"); TOOLFLAGS+=("$toolflag"); BINS+=("$bin")
-          MODELS+=("$model") ;;
+          MODELS+=("$model"); STYLES+=("$style") ;;
   esac
 done < <(node "$DIR/roles.mjs" "$ROLES_FILE")
 
@@ -83,6 +120,14 @@ for i in {1..${#NAMES}}; do
   if [[ "$tpl" == *'{config_dir}'* ]]; then
     tpl="${tpl%%\{config_dir\}*}${(q)CFG[config_dir]}${tpl#*\{config_dir\}}"
   fi
+  # Only claude takes a session id; the others have no flag for one, so cost.mjs
+  # matches their logs by repo and start time instead.
+  sid=""
+  if [[ "$tpl" == *'{session_id}'* ]]; then
+    sid="$(uuidgen | tr 'A-Z' 'a-z')"
+    tpl="${tpl%%\{session_id\}*}${(q)sid}${tpl#*\{session_id\}}"
+  fi
+  SIDS+=("$sid")
   if [[ "$tpl" == *'{prompt}'* ]]; then
     tpl="${tpl%%\{prompt\}*}${(q)PROMPTS[$i]}${tpl#*\{prompt\}}"
   fi
@@ -92,8 +137,16 @@ for i in {1..${#NAMES}}; do
     tf="${TOOLFLAGS[$i]}"
     cmd="$cmd ${tf%%\{tools\}*}${(q)TOOLS[$i]}${tf#*\{tools\}}"
   fi
+  # Held panes run hold.sh instead of the provider: the brief is composed but the
+  # provider process is not started, so there is no first turn to stand down from.
+  if [[ "$HOLD_MODE" == all || ( "$HOLD_MODE" == user && "${STYLES[$i]}" == user ) ]]; then
+    HELD+=(1)
+    cmd="${(q)HOLD_SH} ${(q)NAMES[$i]} ${(q)cmd}"
+  else
+    HELD+=(0)
+  fi
   if [ -n "$FLEET_DRY_RUN" ]; then
-    print -r -- "${NAMES[$i]} [${MODELS[$i]}] in $REPO"
+    print -r -- "${NAMES[$i]} [${MODELS[$i]}]$([ "${HELD[$i]}" = 1 ] && print -n ' HELD') in $REPO"
     print -r -- "  $cmd"
     continue
   fi
@@ -120,11 +173,42 @@ tmux select-layout -t "$SESS:$WIN" tiled
 # Roles live in pane-scoped user options, not pane titles: claude overwrites the
 # title via OSC escape, but it cannot touch a tmux option.
 tmux set-option -w -t "$SESS:$WIN" pane-border-status top
-tmux set-option -w -t "$SESS:$WIN" pane-border-format '#{pane_index}: #{@role} [#{@model}]'
+tmux set-option -w -t "$SESS:$WIN" pane-border-format '#{pane_index}: #{@role} [#{@model}] #{@cost}#{?#{==:#{@held},1}, HELD,}#{?#{==:#{@budget_state},warn}, BUDGET-WARN,}#{?#{==:#{@budget_state},stop}, BUDGET-STOP,}'
 for i in {1..${#NAMES}}; do
   tmux set-option -p -t "${PANES[$i]}" @role "${NAMES[$i]}"
   tmux set-option -p -t "${PANES[$i]}" @model "${MODELS[$i]}"
+  tmux set-option -p -t "${PANES[$i]}" @held "${HELD[$i]}"
 done
+
+# The monitor reads each provider's own session log, so it needs the pane ids and
+# the session ids handed out above — neither exists before the panes do.
+MANIFEST="$(manifest_for "$SESS")"
+typeset -a MANARGS
+for i in {1..${#NAMES}}; do
+  MANARGS+=("${PANES[$i]}" "${NAMES[$i]}" "${MODELS[$i]%%.*}" "${MODELS[$i]}" "${STYLES[$i]}" "${SIDS[$i]}")
+done
+node -e '
+const [out, session, window, repo, config_dir, budget, ...rest] = process.argv.slice(1)
+const panes = []
+for (let i = 0; i < rest.length; i += 6) {
+  const [pane, role, provider, model, style, sid] = rest.slice(i, i + 6)
+  panes.push({ pane, role, provider, model, style, claude_session_id: sid || null })
+}
+require("fs").writeFileSync(out, JSON.stringify({
+  session, window, repo, config_dir,
+  started_at: Math.floor(Date.now() / 1000),
+  budget_usd: budget ? Number(budget) : null,
+  panes,
+}, null, 2))
+' "$MANIFEST" "$SESS" "$WIN" "$REPO" "${CFG[config_dir]}" "${FLEET_BUDGET_USD:-}" "${MANARGS[@]}"
+
+# One monitor per fleet: a respawn reuses the window name, so the previous monitor
+# would never see its window disappear and would poll pane ids that no longer exist.
+PIDFILE="${MANIFEST%.json}.pid"
+[ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null
+nohup node "$COST_MJS" watch "$MANIFEST" >"${MANIFEST%.json}.log" 2>&1 &
+echo $! > "$PIDFILE"
+echo "cost monitor: ./fleet.sh --cost   (log: ${MANIFEST%.json}.log)"
 
 # Built with -d to avoid flicker, but the caller asked for it — so show it.
 tmux select-window -t "$SESS:$WIN"

@@ -22,15 +22,17 @@ Providers verified on this machine 2026-08-10:
 | Provider | How the brief is delivered (`prompt_style`) | Pane wakes up    | `tools:` reaches it |
 | -------- | ------------------------------------------- | ---------------- | ------------------- |
 | `claude` | `--append-system-prompt` (`system`)         | idle             | yes                 |
-| `codex`  | positional prompt (`user`)                  | idle¹ (observed) | no                  |
-| `devin`  | prompt after a literal `--` (`user`)        | idle¹ (observed) | no                  |
-| `gemini` | `--prompt-interactive` (`user`)             | idle¹ (untested) | no                  |
+| `codex`  | positional prompt (`user`)                  | held¹            | no                  |
+| `devin`  | prompt after a literal `--` (`user`)        | held¹            | no                  |
+| `gemini` | `--prompt-interactive` (`user`)             | held¹            | no                  |
 
 ¹ Only claude has a system-prompt channel. Everywhere else the brief lands as a
-first user turn, which reads as "do this now", so `roles.mjs` appends an explicit
-stand-down line to `user`-style briefs. Observed 2026-08-10: codex answered
-`REVIEWER ready.` and devin answered `TESTER.`, both then sat idle. It is a
-prompt, not a guarantee.
+first user turn, which reads as "do this now". `roles.mjs` still appends a stand-down
+line, but a line is a request — so `fleet.sh` runs those panes under `hold.sh`, which
+composes the command and does not start the provider until the pane is addressed.
+Observed 2026-09-14 across three consecutive spawns, plus one probe spawn covering
+gemini, copilot and goose: no provider process, no file write, no spend. Press Enter
+in the pane, or `./fleet.sh --release`, to start it.
 
 Devin's `--agent-config` looks like the right channel and is deliberately unused:
 the file parses (unknown fields rejected, `system_instructions` must be an array)
@@ -56,23 +58,31 @@ account-dependent — add it yourself with `-m provider/model` and `prompt_style
 ## QuickStart
 
 `tmux.conf` — the original. `~/.tmux.conf` is a symlink to it. Edit this file.
-`fleet.sh` — spawn 4 role panes (orchestrator / architect / developer / reviewer).
+`fleet.sh` — spawn one pane per role in `roles.yml`.
+`hold.sh` — runs in place of a `user`-style provider until the pane is addressed.
 `setup.sh` — installs a `fleet` shell function into your rc. Idempotent.
 
 ## Keys
 
-Cmd and Ctrl are swapped globally, so **physical Cmd = true Ctrl**. tmux only sees true Ctrl.
+Every row below was pressed on a live `fleet` window on 2026-09-14 and did what it says.
+Rows that were never pressed are not listed — tmux's own defaults still work, they are
+just not claims this README makes.
 
-| Action           | Keys                             |
-| ---------------- | -------------------------------- |
-| split left/right | `Cmd+\` `Cmd+\`              |
-| move pane        | `Cmd+\` then arrow             |
-| close pane       | type`exit`                     |
-| force-kill pane  | `Cmd+\` then `x`, then `y` |
-| new window       | `Cmd+\` then `c`             |
-| detach           | `Cmd+\` then `d`             |
+The prefix is `C-\`. On a machine where Cmd and Ctrl are swapped globally, the key that
+sends it is the one labelled **Cmd** — tmux sees true Ctrl either way.
 
-Mouse is on: click panes and status-bar window names. Hold **Option** to drag-select natively instead of into tmux copy-mode.
+| Action             | Keys                        |
+| ------------------ | --------------------------- |
+| focus a pane       | click it                    |
+| move between panes | `Cmd+\` then an arrow       |
+| split left/right   | `Cmd+\` `Cmd+\`             |
+| force-kill a pane  | `Cmd+\` then `x`, then `y` |
+| close a pane       | type `exit`                 |
+
+Mouse is on, so clicking a pane focuses it — and dragging goes to tmux, not to the
+terminal. Neither **Option**-drag nor **Shift**-drag got a native selection back in the
+terminal this was tested in, so with the mouse on, copying text means tmux's copy mode.
+`tmux set -g mouse off` trades click-to-focus back for normal selection.
 
 ## Install
 
@@ -115,5 +125,3 @@ A dying pane command makes tmux drop the whole window, so `set -e` aborts with n
 ## Unverified
 
 - **Peer messaging** (`ListAgents` / `SendMessage` between panes). Returned "No reachable agents" every attempt, but never against a fully-booted session — proves nothing either way. Confirmed fallback: `tmux send-keys -t <target> '<prompt>' Enter` then `tmux capture-pane -p -t <target>`.
-- **Non-claude panes idling.** The stand-down line is only a prompt. Not yet observed against a live `codex` or `gemini` pane; if one starts working at spawn anyway, that line is the thing to harden.
-- **Prefix delivery.** `Cmd+\` then `x` did nothing; double-tap split untested since `C-\` became the prefix. Bare `C-\` as a root binding did work. If the prefix is not landing, every keyboard shortcut above is dead and the fix is root bindings (`bind -n`) instead of a prefix.

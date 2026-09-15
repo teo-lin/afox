@@ -16,6 +16,9 @@
 # tools_flag optional, appended only if the role has tools. Absent means `tools:`
 # never reaches this provider.
 #
+# {session_id} is optional and only claude accepts one: it names the session log
+# cost.mjs reads, so spend is attributed to the right pane instead of guessed.
+#
 # peer: appended after roles.yml `peer:`. Peer messaging is a Claude Code
 # feature, so naming ListAgents to any other provider just invites a
 # hallucinated tool call.
@@ -25,7 +28,7 @@ claude:
   bin: claude
   models: [opus, sonnet, fable, haiku]
   prompt_style: system
-  cmd: CLAUDE_CONFIG_DIR={config_dir} claude --model {model} --append-system-prompt {prompt}
+  cmd: CLAUDE_CONFIG_DIR={config_dir} claude --model {model} --session-id {session_id} --append-system-prompt {prompt}
   tools_flag: --allowedTools {tools}
   peer: Discover the other panes with ListAgents and address them by role name.
 

@@ -63,7 +63,7 @@ roles:
       Do not fix what you find; hand it back to DEVELOPER.
 
   - name: REVIEWER
-    provider: codex.gpt-5.6-sol
+    provider: codex.gpt-5.6-terra
     tools: mcp__github, mcp__sonarcloud, mcp__serena
     prompt: |
       You own correctness review. One line per finding, most severe first, and

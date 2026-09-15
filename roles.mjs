@@ -2,7 +2,7 @@
 // Reads roles.yml + providers.yml and emits one record per line for fleet.sh,
 // fields separated by US (0x1f):
 //   CFG<US>key<US>value
-//   ROLE<US>name<US>prompt<US>tools<US>cmd<US>tools_flag<US>bin<US>provider.model
+//   ROLE<US>name<US>prompt<US>tools<US>cmd<US>tools_flag<US>bin<US>provider.model<US>prompt_style
 // Not tab: tab is IFS whitespace, so zsh's `read` collapses runs of them and an
 // empty field (a provider with no tools_flag) silently shifts every later one.
 // Handles only the subset these files use: scalars, `|` blocks, a `roles:` list,
@@ -213,6 +213,7 @@ for (const r of roles) {
       provider.tools_flag ? fill(provider.tools_flag) : '',
       provider.bin,
       `${provider.name}.${model}`,
+      provider.prompt_style,
     ]
       // A US anywhere in a value would split it into two fields downstream.
       .map((f) => f.replaceAll(US, ' '))
