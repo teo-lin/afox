@@ -17,10 +17,10 @@ validated elsewhere. Twelve specs; `Score` is a derived metric from
 | 7 | Issue tracking | Met — Beads + Jira | Keep | — |
 | 8 | Stand-down guaranteed | Met — `hold.sh` keeps user-style panes un-started until addressed | Keep | — |
 | 9 | Cost monitoring | Not met | Per-session token/spend tracking, budget stop | Medium — cheap, solved pattern exists |
-| 10 | Agent↔agent comms | Unverified — `ListAgents` returns "No reachable agents" every attempt | Confirm or replace with a working channel | Medium — blocks spec 11 |
-| 11 | Active listening | Not designed — pipeline is strictly sequential by choice | Open research question | Low/stretch — no prior art anywhere |
+| 10 | Agent↔agent comms | Met — `ListAgents`/`SendMessage` by role name, claude panes only | Keep | — |
+| 11 | Active listening | Researched 2026-09-15 — works already between claude panes, see ACTIVE-LISTENING.md | No build | — |
 | 12 | Worktree isolation | Not met, by design — single writer, sequential tickets | No action | — validated design, not a gap |
-| 13 | Merge/CI gate | Not met — TESTER/REVIEWER report to ORCHESTRATOR, no auto-merge | Open question | Needs a decision, not an implementation |
+| 13 | Merge/CI gate | Decided 2026-09-15 — afox gets its own gate, local only, no CI | Build the cycle below | Medium |
 
 *(table numbered 1–13; "Merge/CI gate" is #13 because it's listed last in the
 source Specs table, not because a #12/#13 split was intended.)*
@@ -90,17 +90,34 @@ warning and a 100% hard stop. Nothing about afox's shape (5 fixed panes, known
 providers) makes this hard to add — it's a wrapper around each pane's provider
 CLI output, not a redesign. Lowest-effort, highest-certainty item on this list.
 
-**10. Agent↔agent comms — Medium priority, blocks spec 11.**
-`ListAgents` / `SendMessage` between panes returns "No reachable agents" on
-every attempt logged so far. Confirmed fallback is `tmux send-keys` +
-`tmux capture-pane`, which works but is not agent-initiated — a human or a
-script drives it. Before investing in spec 11 (active listening), this needs
-to be either confirmed working against a fully-booted session, or replaced.
-Herdr's socket API (agents subscribe to each other's state-change events) is
-the closest working reference pattern found, though it wasn't confirmed to
-support a decide-and-resume flow on top.
+**10. Agent↔agent comms — Met 2026-09-15.**
+Confirmed against a booted fleet. The earlier "No reachable agents" result was
+an addressing failure, not an absent channel: peers were reachable all along,
+but under auto-generated session names, so `SendMessage` to a role name could
+not resolve. `fleet.sh` now passes `--name <ROLE>` to claude, `ListAgents`
+lists peers by role, and `SendMessage` to "DEVELOPER" arrives.
 
-**11. Active listening — Low priority / stretch, no prior art.**
+Observed: ORCHESTRATOR called `ListAgents` (DEVELOPER and ARCHITECT listed by
+role, with their tmux pane ids), then `SendMessage` to DEVELOPER carrying a
+planted codename. DEVELOPER's pane showed `Message from @ORCHESTRATOR` with the
+codename, and the codename is in DEVELOPER's own session log. No `tmux send-keys`
+in the delivery path.
+
+The limit: peer messaging is a Claude Code feature, so it covers the claude panes
+only. Codex, devin, gemini, copilot and goose panes do not appear in `ListAgents`.
+Reaching those still means `tmux send-keys` + `capture-pane`, which a human or a
+script drives. Spec 11 is therefore unblocked for the claude roles and not for the
+others — Herdr's socket API stays the reference if that has to change.
+
+**11. Active listening — researched 2026-09-15, no build needed.**
+Full finding in `ACTIVE-LISTENING.md`. Observed end to end between two claude
+panes: ORCHESTRATOR messaged DEVELOPER while DEVELOPER's task was still running,
+DEVELOPER replied, decided for itself not to abandon the task, and then resumed
+and reported it. No new code. The limit is that a message lands on a turn
+boundary, not mid-generation, and that the channel reaches claude panes only.
+
+Original framing, kept for context:
+
 Defined as: a peer (TESTER/REVIEWER) interrupts a *different* agent's in-flight
 task (DEVELOPER mid-ticket), that agent decides for itself whether to change
 course, then resumes — no human relay. Nothing in the survey does this. Every
@@ -120,12 +137,31 @@ Microsoft Conductor and AWS CAO's supervisor pattern (Category A, like afox)
 also don't foreground worktrees. Revisit only if afox's DEVELOPER role is ever
 fanned out to run more than one ticket at once.
 
-**13. Merge/CI gate — needs a decision, not an implementation.**
-Currently no automated gate: TESTER and REVIEWER report findings to
-ORCHESTRATOR, and nothing auto-merges. MultiClaude's CI-as-one-way-ratchet and
-Composio's autonomous CI-fix loop are the two working references, but both are
-PR-per-task tools (Category B-adjacent), not epic-pipeline tools — porting
-either pattern changes what "done" means for a ticket in afox's model. Open
-question for the user, not a build task: does a ticket's Jira/Beads closure
-already imply an equivalent gate outside afox's scope, or does afox need one
-of its own?
+**13. Merge/CI gate — decided 2026-09-15: afox gets its own gate.**
+Ticket closure in Jira/Beads was rejected as the gate. afox enforces its own
+cycle, and a Beads ticket closes only at the end of it. Local only — no CI is in
+scope for now. MultiClaude's CI-as-one-way-ratchet and Composio's autonomous
+CI-fix loop stay out for the same reason they were flagged: both are PR-per-task
+tools, and afox's unit of work is a ticket, not a PR.
+
+The gate, as the user specified it:
+
+1. DEVELOPER claims a ticket done. TESTER tests it.
+2. All green, and REVIEWER reviews. Not before.
+3. REVIEWER flags findings. DEVELOPER decides each one:
+   correct and in scope — implement it;
+   correct and out of scope — file a new Beads ticket or update the relevant
+   existing one;
+   incorrect — reject the comment.
+4. All comments resolved, and TESTER retests.
+5. Tests fail and the code is corrected as a result — a new review cycle starts.
+6. More than three such cycles, and the fourth is elevated to ARCHITECT, who
+   decides how to settle it.
+7. Settled by a normal cycle or by ARCHITECT — the work is done and the Beads
+   ticket is closed.
+
+Pane lifecycle, decided at the same time: ORCHESTRATOR tears down and respawns
+DEVELOPER, TESTER and REVIEWER for each ticket. ORCHESTRATOR is never closed.
+ARCHITECT persists between tickets.
+
+Build tickets: afox-99q (the cycle) and afox-2fc (the pane lifecycle).

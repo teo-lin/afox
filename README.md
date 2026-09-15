@@ -60,6 +60,7 @@ account-dependent — add it yourself with `-m provider/model` and `prompt_style
 `tmux.conf` — the original. `~/.tmux.conf` is a symlink to it. Edit this file.
 `fleet.sh` — spawn one pane per role in `roles.yml`.
 `hold.sh` — runs in place of a `user`-style provider until the pane is addressed.
+`board.mjs` — the ticket board pane: Beads tickets, closed ones ticked and struck through.
 `setup.sh` — installs a `fleet` shell function into your rc. Idempotent.
 
 ## Keys
@@ -122,6 +123,20 @@ A dying pane command makes tmux drop the whole window, so `set -e` aborts with n
 7. `${tpl%%\{x\}*}${v}${tpl#*\{x\}}` silently *duplicates* the whole template when `{x}` is absent, so every placeholder substitution is guarded by a presence test.
 8. Every provider gates first use behind its own trust prompt, and they are not the same. Observed: codex asks to trust the directory **and then** to trust 4 changed hooks — two prompts before the pane is usable. Budget for that on a fresh `repo`.
 
-## Unverified
+## Peer messaging
 
-- **Peer messaging** (`ListAgents` / `SendMessage` between panes). Returned "No reachable agents" every attempt, but never against a fully-booted session — proves nothing either way. Confirmed fallback: `tmux send-keys -t <target> '<prompt>' Enter` then `tmux capture-pane -p -t <target>`.
+Works, between claude panes, 2026-09-15. `ListAgents` lists each peer under the role
+name, because `fleet.sh` passes `--name <ROLE>`; `SendMessage` then addresses a peer by
+that role name and the message arrives in the other pane. Observed: ORCHESTRATOR sent
+DEVELOPER a planted codename, DEVELOPER's pane showed `Message from @ORCHESTRATOR` with
+it, and the codename appears in DEVELOPER's own session log. Agent-initiated — no
+`tmux send-keys` in the delivery path.
+
+Without `--name` the peers are still reachable but carry auto-generated session names, so
+`SendMessage` to "DEVELOPER" fails with "No agent named 'DEVELOPER' is reachable". That,
+not an absent channel, is what the old "No reachable agents" result was.
+
+It reaches claude panes only. Peer messaging is a Claude Code feature, so codex, devin,
+gemini, copilot and goose panes do not appear in `ListAgents` and cannot be addressed
+this way. For those, the fallback is still `tmux send-keys -t <target> '<prompt>' Enter`
+then `tmux capture-pane -p -t <target>`, which a human or a script drives.

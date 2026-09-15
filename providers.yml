@@ -19,6 +19,10 @@
 # {session_id} is optional and only claude accepts one: it names the session log
 # cost.mjs reads, so spend is attributed to the right pane instead of guessed.
 #
+# {role} is the role name. Only claude accepts one (--name), and without it
+# ListAgents shows peers under an auto-generated session name, so SendMessage to
+# "DEVELOPER" fails even though the pane is reachable.
+#
 # peer: appended after roles.yml `peer:`. Peer messaging is a Claude Code
 # feature, so naming ListAgents to any other provider just invites a
 # hallucinated tool call.
@@ -28,7 +32,7 @@ claude:
   bin: claude
   models: [opus, sonnet, fable, haiku]
   prompt_style: system
-  cmd: CLAUDE_CONFIG_DIR={config_dir} claude --model {model} --session-id {session_id} --append-system-prompt {prompt}
+  cmd: CLAUDE_CONFIG_DIR={config_dir} claude --model {model} --name {role} --session-id {session_id} --append-system-prompt {prompt}
   tools_flag: --allowedTools {tools}
   peer: Discover the other panes with ListAgents and address them by role name.
 
