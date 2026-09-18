@@ -13,21 +13,10 @@
 set -e
 
 DIR="${0:A:h}"
-# A profile is just a different roles file. FLEET_ROLES takes a bare name next
-# to this script (roles.local.yml) or any path.
-ROLES_FILE="${FLEET_ROLES:-roles.yml}"
-[[ "$ROLES_FILE" == */* ]] || ROLES_FILE="$DIR/$ROLES_FILE"
 WIN=fleet
 HOLD_SH="$DIR/hold.sh"
 COST_MJS="$DIR/cost.mjs"
 manifest_for() { print -r -- "${TMPDIR:-/tmp}/afox-fleet-${1//[^A-Za-z0-9]/_}.json" }
-
-# A held pane has no provider process yet, so it cannot take a first turn.
-HOLD_MODE="${FLEET_HOLD:-user}"
-case "$HOLD_MODE" in
-  user|all|off) ;;
-  *) echo "FLEET_HOLD must be user, all or off (got '$HOLD_MODE')" >&2; exit 1 ;;
-esac
 
 if [ "$1" = "--cost" ]; then
   shift
@@ -58,11 +47,34 @@ SESS="${1:-$(tmux display-message -p '#{session_id}')}"
 
 # Machine-specific paths (CLAUDE_CONFIG_DIR) live here, not in the tracked
 # files. `set -a` so roles.mjs sees them.
+# `source` overwrites, so a FLEET_* the caller set on the command line would
+# lose to the one in .env — the wrong way round. Keep the caller's and put it
+# back after. Plain `[ -n x ] && y` is not used: under `set -e` a false test
+# is a failing command and would abort the script.
+PRE_ROLES="${FLEET_ROLES:-}"
+PRE_HOLD="${FLEET_HOLD:-}"
+PRE_BUDGET="${FLEET_BUDGET_USD:-}"
 if [ -f "$DIR/.env" ]; then
   set -a; source "$DIR/.env"; set +a
 fi
+if [ -n "$PRE_ROLES" ];  then FLEET_ROLES="$PRE_ROLES"; fi
+if [ -n "$PRE_HOLD" ];   then FLEET_HOLD="$PRE_HOLD"; fi
+if [ -n "$PRE_BUDGET" ]; then FLEET_BUDGET_USD="$PRE_BUDGET"; fi
+
+# A held pane has no provider process yet, so it cannot take a first turn.
+# Read after .env, which .env.example has always advertised as a place to set it.
+HOLD_MODE="${FLEET_HOLD:-user}"
+case "$HOLD_MODE" in
+  user|all|off) ;;
+  *) echo "FLEET_HOLD must be user, all or off (got '$HOLD_MODE')" >&2; exit 1 ;;
+esac
 
 command -v node >/dev/null 2>&1 || { echo "node required to read roles.yml" >&2; exit 1 }
+# A profile is just a different roles file. FLEET_ROLES takes a bare name next
+# to this script (roles.local.yml) or any path. Resolved after .env is sourced,
+# so a machine can pick its default there instead of exporting it every time.
+ROLES_FILE="${FLEET_ROLES:-roles.yml}"
+[[ "$ROLES_FILE" == */* ]] || ROLES_FILE="$DIR/$ROLES_FILE"
 [ -f "$ROLES_FILE" ] || { echo "missing $ROLES_FILE" >&2; exit 1 }
 
 # ~/.tmux.conf must symlink to this repo's tmux.conf (mouse on, prefix C-\).
