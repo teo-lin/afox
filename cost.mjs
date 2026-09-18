@@ -9,6 +9,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const [mode, manifestPath] = process.argv.slice(2)
 if (!mode || !manifestPath) {
@@ -20,7 +21,10 @@ const POLL_MS = 15000
 const WARN_AT = 0.8
 
 let manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-const prices = readPrices(join(dirname(new URL(import.meta.url).pathname), 'prices.yml'))
+// fileURLToPath, not URL.pathname: on Windows the pathname keeps a leading slash
+// before the drive (/C:/...), which join() then resolves against the current drive
+// as C:\C:\... and the monitor dies on a file that is plainly there.
+const prices = readPrices(join(dirname(fileURLToPath(import.meta.url)), 'prices.yml'))
 
 // Same shape as roles.mjs's parser: top-level key, one level of indented scalars.
 // Keys here carry dots (claude.opus), so the key pattern is wider than roles.mjs's.
