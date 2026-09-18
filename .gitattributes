@@ -1,0 +1,13 @@
+# Line endings are not a style preference here, they decide whether afox runs.
+#
+# roles.mjs parses roles.yml and providers.yml line by line, and its top-level
+# scalar regex ends in (.*)$ — (.*) cannot match a carriage return and $ does not
+# match before one, so with CRLF every key fails to match and falls through the
+# ignore branch. The symptom is `roles.yml: missing "repo"` against a file where
+# repo: . is plainly present. A CR at the end of a shebang is likewise a bad
+# interpreter naming a shell that is installed.
+#
+# The repository's blobs have always been LF; it is Windows checkout under
+# core.autocrlf=true that introduces the CR. Pinning eol=lf changes no blob, so
+# it is invisible on macOS and Linux and is the whole fix on Windows.
+* text=auto eol=lf

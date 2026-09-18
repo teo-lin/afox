@@ -101,6 +101,15 @@ done < <(node "$DIR/roles.mjs" "$ROLES_FILE")
 # unexpected cwd means a fresh trust prompt and agents editing the wrong tree.
 REPO="${2:-${CFG[repo]}}"
 
+# roles.mjs resolves this with node, so on Windows it arrives in Windows form
+# (C:\...) and MSYS2's tmux cannot chdir to that — it falls back to $HOME with no
+# error and every pane opens in the wrong tree. cygpath exists only where that is
+# a risk, so this is a no-op on macOS and Linux. CLAUDE_CONFIG_DIR deliberately
+# keeps its Windows form: claude is a native binary and cannot read the other one.
+if command -v cygpath >/dev/null 2>&1; then
+  REPO="$(cygpath -u "$REPO")"
+fi
+
 # A dying pane takes the whole window with it, silently — so check before any exist.
 for bin in ${(u)BINS}; do
   command -v "$bin" >/dev/null 2>&1 || {
@@ -133,7 +142,7 @@ for i in {1..${#NAMES}}; do
   if [[ "$tpl" == *'{session_id}'* ]]; then
     # node, not uuidgen: uuidgen ships with neither Git Bash nor MSYS2, and a
     # dying pane command takes the whole window with it silently.
-    sid="$(node -e 'process.stdout.write(crypto.randomUUID())')"
+    sid="$(node -e 'process.stdout.write(require("crypto").randomUUID())')"
     tpl="${tpl%%\{session_id\}*}${(q)sid}${tpl#*\{session_id\}}"
   fi
   SIDS+=("$sid")
