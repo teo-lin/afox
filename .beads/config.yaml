@@ -66,3 +66,8 @@
 # - github.token    → use GITHUB_TOKEN env var instead
 
 sync.remote: "git+https://github.com/teo-lin/afox.git"
+export:
+    auto: true
+    git-add: true
+
+no-push: true

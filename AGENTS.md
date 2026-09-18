@@ -46,6 +46,19 @@ Prefer inspecting a real `fleet` window over reasoning about what the script sho
 `README.md` has an **Unverified** section (peer messaging, prefix delivery) — treat those as open
 questions, and move an item out of it only after an actual observation, not an argument.
 
+## Beads across machines
+
+The Dolt database in `.beads/` is gitignored and never leaves the machine that wrote it.
+What travels is `.beads/issues.jsonl`, exported on write (`export.auto`) and tracked in git.
+`bd import` is an upsert, so a pull-then-import adds the other machine's tickets and never
+replaces the local database.
+
+On a machine that has been away, in this order: `git pull`, then `bd import .beads/issues.jsonl`,
+then work. Exporting before importing writes only what this machine knows and drops the other
+machine's tickets out of the JSONL — that is the one way to lose a ticket here.
+
+`no-push` is true on purpose: bd does not push Dolt data to the git remote on its own.
+
 ## Cost
 
 Each pane is a full agent session: a 5-role fleet costs ~5x tokens and real CPU for as long

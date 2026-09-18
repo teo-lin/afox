@@ -127,7 +127,9 @@ for i in {1..${#NAMES}}; do
   fi
   sid=""
   if [[ "$tpl" == *'{session_id}'* ]]; then
-    sid="$(uuidgen | tr 'A-Z' 'a-z')"
+    # node, not uuidgen: uuidgen ships with neither Git Bash nor MSYS2, and a
+    # dying pane command takes the whole window with it silently.
+    sid="$(node -e 'process.stdout.write(crypto.randomUUID())')"
     tpl="${tpl%%\{session_id\}*}${(q)sid}${tpl#*\{session_id\}}"
   fi
   SIDS+=("$sid")
