@@ -1,0 +1,57 @@
+# Test profile: the whole fleet on one local model, zero spend.
+#
+#   FLEET_ROLES=roles.local.yml fleet
+#
+# Use it to exercise panes, roles, holds, borders, peer addressing and the cost
+# monitor without paying for five hosted sessions. It is a rig for the mechanism,
+# not a measure of the real fleet: one ollama server holds one copy of the model
+# and all five panes queue on it, so latency here says nothing about latency there.
+#
+# Hardware this was sized for: RTX 5070 Laptop, 8 GB VRAM, 32 GB RAM.
+# qwen3:8b is Q4_K_M at 5.2 GB, which fits in VRAM with room for the KV cache and
+# reports `tools` and `thinking` capability — goose needs tool calling, so a model
+# without it is not a candidate however good its code is.
+
+repo: .
+# Unused by goose; roles.mjs requires it, and a profile that omits it dies with
+# `missing "config_dir"` rather than anything about goose.
+config_dir: ${CLAUDE_CONFIG_DIR:-~/.claude}
+
+provider: goose.qwen3:8b
+
+# No ListAgents here: peer messaging is a Claude Code feature, so these panes can
+# only be reached with tmux send-keys. Saying otherwise invites a hallucinated call.
+peer: |
+  You are one of several peer agent sessions running in tmux panes, one role each.
+  Keep messages to peers short and factual. You cannot message them directly.
+
+# Prompts are shorter than roles.yml's on purpose: an 8B model follows three plain
+# sentences and loses the thread on a paragraph. The role boundaries are the same.
+roles:
+  - name: ORCHESTRATOR
+    prompt: |
+      You own task breakdown, sequencing and delegation.
+      Run `node board.mjs` and show its output in full when you start.
+      Do not write code. Report what is outstanding when asked.
+
+  - name: ARCHITECT
+    prompt: |
+      You own design: interfaces, file structure, data flow.
+      Produce a plan concrete enough to implement. Do not implement it.
+      State your assumptions and the option you rejected.
+
+  - name: DEVELOPER
+    prompt: |
+      You own implementation. Follow the ARCHITECT plan.
+      Hand finished work to TESTER, then REVIEWER. Never self-approve.
+
+  - name: TESTER
+    prompt: |
+      You own verification against the running system, not against the code.
+      Report what you ran and its raw output.
+      Do not fix what you find; hand it back to DEVELOPER.
+
+  - name: REVIEWER
+    prompt: |
+      You own correctness review. One line per finding, most severe first.
+      Do not fix code yourself. Say plainly when a diff is clean.

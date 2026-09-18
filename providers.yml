@@ -74,9 +74,12 @@ copilot:
   cmd: OPENCODE_MODEL=$(case {model} in sol) echo github-copilot/gpt-5.6-sol;; terra) echo github-copilot/gpt-5.6-terra;; *) echo {model};; esac) opencode -m $OPENCODE_MODEL --prompt {prompt}
 
 # Local-first goose; current config is ollama. Add local models as you serve them.
+# `--system` is a real system-prompt channel, not just a flag that parses: a codename
+# planted in it came back out of the model on v1.51.0, 2026-09-18. So goose panes wake
+# up idle like claude's and need no hold.sh — the second provider where that is true.
 goose:
   bin: goose
   models: [qwen, qwen3:8b]
-  prompt_style: user
-  cmd: GOOSE_PROVIDER=ollama GOOSE_MODEL=$(if [ {model} = qwen ]; then echo qwen3:8b; else echo {model}; fi) goose run -t {prompt} -s
+  prompt_style: system
+  cmd: GOOSE_PROVIDER=ollama GOOSE_MODEL=$(if [ {model} = qwen ]; then echo qwen3:8b; else echo {model}; fi) goose session --system {prompt}
 

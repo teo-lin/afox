@@ -7,12 +7,16 @@
 # FLEET_DRY_RUN=1 prints the composed per-pane command and spawns nothing —
 # the only way to check a provider's flags without paying for N agent sessions.
 # FLEET_HOLD=user|all|off picks which panes start held (default user).
+# FLEET_ROLES=<file> picks a roles profile (default roles.yml).
 # FLEET_BUDGET_USD caps spend per pane: warn at 80%, stop the pane's agent at 100%.
 
 set -e
 
 DIR="${0:A:h}"
-ROLES_FILE="$DIR/roles.yml"
+# A profile is just a different roles file. FLEET_ROLES takes a bare name next
+# to this script (roles.local.yml) or any path.
+ROLES_FILE="${FLEET_ROLES:-roles.yml}"
+[[ "$ROLES_FILE" == */* ]] || ROLES_FILE="$DIR/$ROLES_FILE"
 WIN=fleet
 HOLD_SH="$DIR/hold.sh"
 COST_MJS="$DIR/cost.mjs"

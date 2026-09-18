@@ -34,10 +34,16 @@ const indent = (s) => s.match(/^ */)[0].length
 const isComment = (s) => /^\s*#/.test(s) || s.trim() === ''
 
 // Consume a `|` block scalar: every following line indented deeper than `base`.
+// A comment ends the block like any other dedent. The old guard let a comment
+// through at any indent and then pushed it, so a `#` line between `peer: |` and
+// `roles:` was appended to the text and shipped inside every role's prompt.
 function block(i, base) {
   const out = []
-  while (i < lines.length && (isComment(lines[i]) || indent(lines[i]) > base)) {
-    if (lines[i].trim() !== '') out.push(lines[i].trim())
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.trim() === '') { i++; continue }
+    if (indent(line) <= base) break
+    if (!/^\s*#/.test(line)) out.push(line.trim())
     i++
   }
   return [out.join(' '), i]
