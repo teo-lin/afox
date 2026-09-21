@@ -235,7 +235,14 @@ require("fs").writeFileSync(out, JSON.stringify({
 # One monitor per fleet: a respawn reuses the window name, so the previous monitor
 # would never see its window disappear and would poll pane ids that no longer exist.
 PIDFILE="${MANIFEST%.json}.pid"
-[ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null
+# An `&& ` list, not an if: under set -e a false test is a failing command, so an
+# absent pidfile — or a pid that has already exited — aborted the whole script
+# here, silently, after the panes were built but before select-window and before
+# the monitor started. It only survived when a previous monitor happened to be
+# alive, which is why it looked intermittent.
+if [ -f "$PIDFILE" ]; then
+  kill "$(cat "$PIDFILE")" 2>/dev/null || true
+fi
 nohup node "$COST_MJS" watch "$MANIFEST" >"${MANIFEST%.json}.log" 2>&1 &
 echo $! > "$PIDFILE"
 echo "cost monitor: ./fleet.sh --cost   (log: ${MANIFEST%.json}.log)"
