@@ -123,16 +123,29 @@ DIR="\${1:-\$PWD}"
 case "\$DIR" in [A-Za-z]:*) DIR="\$(cygpath -u "\$DIR")" ;; esac
 [ -d "\$DIR" ] || DIR="\$HOME"
 
-if [ -n "\${2:-}" ]; then RUN="cd '\$DIR' && FLEET_ROLES='\$2' '\$AFOX/fleet.sh'"
-else                      RUN="cd '\$DIR' && '\$AFOX/fleet.sh'"; fi
+if [ -n "\${2:-}" ]; then PROFILE="FLEET_ROLES='\$2' "; else PROFILE=""; fi
 
 if tmux has-session -t "\$SESSION" 2>/dev/null; then
-  # Re-spawn inside the session that exists rather than stacking up a new one;
-  # fleet.sh kills its own window first, so this stays idempotent.
-  tmux send-keys -t "\$SESSION:0" "\$RUN" Enter
+  # Run it here rather than send-keys into window 0. If that window is busy, the
+  # keystrokes sit in its input buffer and only run when something next reads a
+  # line — which looks like nothing happened until you press a key.
+  S="\$(tmux display-message -p -t "\$SESSION" '#{session_id}')"
+  ( cd "\$DIR" && eval "\${PROFILE}'\$AFOX/fleet.sh' '\$S'" )
+  tmux select-window -t "\$SESSION:fleet" 2>/dev/null || true
   exec tmux attach -t "\$SESSION"
 fi
-exec tmux new-session -s "\$SESSION" -c "\$DIR" "\$RUN; exec bash -l"
+
+# Build the fleet from inside window 0, after the client has attached. Doing it
+# while the client is still attaching loses a race: tmux puts the fresh client on
+# window 0 and leaves the finished fleet window unwatched, which reads as "an
+# empty window opened and nothing happened".
+# CHERE_INVOKING keeps the trailing login shell in the repo; MSYS2's /etc/profile
+# cd's to \$HOME without it.
+RUN="echo 'starting the fleet — five panes, about half a minute...'"
+RUN="\$RUN; cd '\$DIR' && \${PROFILE}'\$AFOX/fleet.sh'"
+RUN="\$RUN; tmux select-window -t '\$SESSION:fleet' 2>/dev/null"
+RUN="\$RUN; CHERE_INVOKING=1 exec bash -l"
+exec tmux new-session -s "\$SESSION" -c "\$DIR" "\$RUN"
 EOF
 
 cat > "$BIN/fleet.cmd" <<EOF
